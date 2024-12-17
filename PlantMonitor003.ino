@@ -19,9 +19,9 @@ Adafruit_AHT10 aht;
 const String deviceID = "PlantMonitor0001";
 
 // spreadsheetID
-const char* spreadsheetID = "GoogleSheetID";
+const char* spreadsheetID = "spreadsheetID";
 // deploymentID
-const char* GScriptId = "GoogleScriptID";
+const char* GScriptId = "GScriptId";
 
 // Enter command (insert_row or append_row) and your Google Sheets sheet name (default is Sheet1):
 String payload_base =  "{\"command\": \"insert_row\", \"sheet_name\": \"Sheet1\", \"values\": ";
@@ -33,12 +33,6 @@ const int httpsPort = 443;
 const char* fingerprint = "";
 String url = String("/macros/s/") + GScriptId + "/exec";
 HTTPSRedirect* client = nullptr;
-
-// Declare variables that will be published to Google Sheets
-int timestamp = 0;
-String device = "";
-String reading = "";
-float value = 0;
 
 // Define the pins
 const int probe = A0;
@@ -154,18 +148,30 @@ void setup(void){
   digitalWrite(redLED,LOW);
   digitalWrite(blueLED,LOW);
 
+
+  measure();
 }
 /***************************************************************
 * LOOP
 **************************************************************/
 void loop(void){
 
+  // handle millis rollovers
+  if (millis()<20000) {
+
+    lastMillis = millis();
+  }
+
+
+  // take measurements at the timed interval
   if (millis()>(lastMillis+refresh)) {
      measure();
 
     lastMillis = millis();
   }
 
+
+  // if the button is pressed, execute the button code
   if (buttonON==LOW & digitalRead(button)==HIGH) {
 
     buttonON =HIGH;
@@ -175,11 +181,13 @@ void loop(void){
 
     buttonON = LOW;
   }
+
+  // set the blue LED to off (on indicates data transfer)
   digitalWrite(blueLED,LOW);
 
 }
 
-void sendPayload(String pay) {
+void sendPayload(String pay) { //--------------------------------------------------------------------------------------------------------------
 
   Serial.println("attempting to send:  " + pay);
   
@@ -214,39 +222,48 @@ void sendPayload(String pay) {
     // do stuff here if publish was not successful
     Serial.println("Error while connecting");
   }
+  // need to wait a bit bwteeen sending readings
+  delay(5000);
 
   
 }
 
-void measure() {
+void measure() { //-----------------------------------------------------------------------------------------------------
   // read the probes
 
   digitalWrite(blueLED,HIGH);
 
-  // moisture reading
-  int probeReading = analogRead(probe);
+  // first connection attempt
   timeClient.update();
-  String payload = String(timeClient.getEpochTime()) +", "+deviceID+", moisture, " + String(probeReading);
+  String payload = String(timeClient.getEpochTime()) +", "+deviceID+",first connection attempt, -1";
+  sendPayload(payload);
+
+  
+  // moisture reading
+  timeClient.update();
+  int probeReading = analogRead(probe);
+  payload = String(timeClient.getEpochTime()) +", "+deviceID+",moisture, " + String(probeReading);
   sendPayload(payload);
 
   // temp and humidity reading
   sensors_event_t humidity, temp;
   timeClient.update();
   aht.getEvent(&humidity, &temp);
-    payload = String(timeClient.getEpochTime()) +", "+deviceID+", temperature, " + String(temp.temperature);
+    payload = String(timeClient.getEpochTime()) +", "+deviceID+",temperature, " + String(temp.temperature);
     sendPayload(payload);
-    payload = String(timeClient.getEpochTime()) +", "+deviceID+", humidity, " + String(humidity.relative_humidity);
+    payload = String(timeClient.getEpochTime()) +", "+deviceID+",humidity, " + String(humidity.relative_humidity);
     sendPayload(payload);
 
 }
 
-void onButton() {
+void onButton() { //-----------------------------------------------------------------------------------------------------------------------------
 
   digitalWrite(blueLED,HIGH);
 
   timeClient.update();
-  
-  String payload = String(timeClient.getEpochTime()) +", "+deviceID+", button, -1";
+  String payload = String(timeClient.getEpochTime()) +", "+deviceID+",first connection attempt, -1";
+  sendPayload(payload);
+  payload = String(timeClient.getEpochTime()) +", "+deviceID+", button, -1";
   sendPayload(payload);
   measure();
   

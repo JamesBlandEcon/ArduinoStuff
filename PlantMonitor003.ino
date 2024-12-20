@@ -96,7 +96,8 @@ void setup(void){
   Serial.println(ssid);
   Serial.print("IP address: ");
   Serial.println(WiFi.localIP());  //IP address assigned to your ESP
-
+  WiFi.setAutoReconnect(true);
+  WiFi.persistent(true);
   
 
   timeClient.begin();
